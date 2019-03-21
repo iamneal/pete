@@ -1,0 +1,22 @@
+GetCatByName
+in: CatName
+out: Cat
+SELECT
+    name,
+    age,
+    cost
+FROM cats
+
+WHERE
+    name = @cat_name
+
+InsertFish
+in: Fish
+out: Empty
+INSERT INTO fish(
+    species,
+    cost
+) VALUES(
+    @species,
+    @cost
+)

@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package test;
+
+// make sure you have this.  Explaining it is out of scope of this example
+import "persist/options.proto"; 
+
+
+message Empty {}
+message AnimalCount{
+    int64 dogs = 1;
+    int64 cats = 1;
+    int64 fishes = 1;
+}
+
+message  Dog {
+    string name = 1;
+    double age = 2;
+    double cost = 3;
+}
+message Cat {
+    string name = 1;
+    double age = 2;
+    double cost = 3;
+}
+message Fish {
+    string species = 1;
+    double cost = 2;
+}
+message Owner {
+    string name = 1;
+    repeated Dog dogs = 1;
+    repeated Cat cats = 2;
+    repeated Fish fishes = 3;
+    double money = 4;
+}
+
+message CatName {
+    string cat_name = 1;
+}
+
+
+// merged eps and api services
+service PetShop{
+    rpc GetCatByName(CatName) returns(Cat){
+        option (persist.opts) = {
+            query: "GetCatByName"
+        };
+    }
+    rpc ShipFish(stream Fish) returns(Empty) {
+        option (persist.opts) = {
+            query: "InsertFish"
+        };
+    }
+    option (persist.service_type) = SQL;
+    option (persist.ql) = {
+    queries: [
+    {
+      name: "GetCatByName",
+      query: [
+        "SELECT",
+            "name,",
+            "age,",
+            "cost",
+        "FROM cats",
+        "WHERE",
+            "name = @cat_name"
+      ],
+      pm_strategy: "$",
+      in: ".test.CatName",
+      out: ".test.Cat",
+    },
+    {
+      name: "InsertFish",
+      query: [
+        "INSERT INTO fish(",
+            "species,",
+            "cost",
+        ") VALUES(",
+            "@species,",
+            "@cost",
+        ")"
+      ],
+      pm_strategy: "$",
+      in: ".test.Fish",
+      out: ".test.Empty",
+    }
+    ];
+};
+
+        
+}
