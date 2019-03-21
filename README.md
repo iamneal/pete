@@ -99,7 +99,7 @@ option (persist.ql) = {
 
 
 
-Pete is a cli tool for snipping out a (persist.ql) option in a `.proto` file, and replacing it's with uglified code, with code  from a much prettier input file.
+Pete is a cli tool for snipping out a (persist.ql) option in a `.proto` file, and replacing the uglified code, with code  from pete's much prettier input file.
 
 
 ## testfile:
@@ -130,7 +130,7 @@ Flags:
       --config string    config file (default is $HOME/.pete.yaml)
   -d, --deli string      the delimiter to use (default "\n\n")
   -h, --help             help for pete
-  -i, --input string     file to parse
+  -i, --input string     file to parse (default is "persist.pete")
   -l, --linepad string   the padding string for each line defaults to 4 spaces (default "    ")
   -o, --output string    file to write to
   -p, --prefix string    the package prefix for your in and out types
@@ -172,6 +172,7 @@ no more comma hunting, no more syntax errors, no more having to write more than 
 - in, and out must be prefixed with `in: TYPE_NAME` and `out: TYPE_NAME`
 - pete refuses to override a `in:` or `out:` option if it has `.`'s in the string. It assumes it must be
     fully qualified
+- pete currently only works if executed in the same directory as the proto and pete file
 
 
 ## Roadmap
