@@ -236,7 +236,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().StringP("input", "i", "", "file to parse")
+	rootCmd.Flags().StringP("input", "i", "persist.pete", "file to parse (default is \"persist.pete\"")
 	rootCmd.Flags().StringP("output", "o", "", "file to write to")
 	rootCmd.Flags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	rootCmd.Flags().StringP("linepad", "l", "    ", "the padding string for each line defaults to 4 spaces")
