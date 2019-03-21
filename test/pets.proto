@@ -40,7 +40,6 @@ message CatName {
 }
 
 
-// merged eps and api services
 service PetShop{
     rpc GetCatByName(CatName) returns(Cat){
         option (persist.opts) = {
