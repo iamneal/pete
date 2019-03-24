@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 	"unicode"
 
 	homedir "github.com/mitchellh/go-homedir"
+	absp "github.com/rhysd/abspath"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,9 +40,14 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		workingDir, _ := os.Getwd()
-		input := path.Join(workingDir, viper.GetString("input"))
-		output := path.Join(workingDir, viper.GetString("output"))
+		input, err := absp.ExpandFrom(viper.GetString("input"))
+		if err != nil {
+			panic(fmt.Sprintf("error expanding input: %+v", err))
+		}
+		output, err := absp.ExpandFrom(viper.GetString("output"))
+		if err != nil {
+			panic(fmt.Sprintf("error expanding output: %+v", err))
+		}
 		deli := strings.Replace(viper.GetString("deli"), "\\n", "\n", -1)
 		linepad := viper.GetString("linepad")
 		prefix := viper.GetString("prefix")
@@ -53,70 +58,27 @@ to quickly create a Cobra application.`,
 		fmt.Println("deli: ", deli)
 		fmt.Println("prefix: ", prefix)
 
-		file, err := ioutil.ReadFile(input)
+		protofile, queryStart, queryEnd, err := protoFileQueriesPos(output.String())
 		if err != nil {
 			panic(err)
 		}
-		pBytes, err := ioutil.ReadFile(output)
+		// get unformatted queries from pete file
+		queries, err := peteQueriesFromFile(input.String(), deli)
 		if err != nil {
 			panic(err)
 		}
-		persistFile := string(pBytes)
+		// now format our queries
+		decoratePeteQueries(queries, linepad, prefix, tabsize)
 
-		lineWithPersist := strings.Index(persistFile, "persist.ql")
-		if lineWithPersist < 0 {
-			panic(fmt.Errorf("not a persist file"))
-		}
-		// find next nearest newline, that is where we will start our search
-		nextNl := strings.Index(persistFile[lineWithPersist:], "\n")
-		if nextNl < 0 {
-			panic(fmt.Errorf("not a finished persist file"))
-		}
-
-		// represents the number of '{' on the stack.  Every '{' rune incs, and '}' decs
-		// goal being to get this to zero before eof, that is the queries we need to replace
-		i := 0
-		for braceStack := 1; braceStack != 0; i++ {
-			c := persistFile[lineWithPersist+nextNl+i]
-			if c == '{' {
-				braceStack++
-			} else if c == '}' {
-				braceStack--
-			}
-		}
-		// line with opts, + offset of newline, + 1 to include the newline
-		queryStart := lineWithPersist + nextNl + 1
-		// line with opts, + offset of newline, + till closing curly brace -1
-		queryEnd := lineWithPersist + nextNl + i - 1
-
-		// now format our queries from the file we read
-		queriesOpts := strings.Split(string(file), deli)
-		var queries []string
-		for i, v := range queriesOpts {
-			if strings.TrimSpace(v) == "" {
-				continue
-			}
-			queryParts := strings.Split(v, "\n")
-			// TODO filter out bad lines
-			serilizer := newQuerySerializer(queryParts, linepad, prefix)
-			decoratedQuery := serilizer.Serialize(tabsize)
-			// this isn't the last query so add a comma
-			if i < len(queriesOpts)-1 {
-				decoratedQuery += ","
-			}
-			decoratedQuery += "\n"
-
-			queries = append(queries, decoratedQuery)
-		}
 		joinedQueries := strings.Join(queries, "")
 
-		data := persistFile[0:queryStart] +
+		data := protofile[0:queryStart] +
 			header(linepad) +
 			joinedQueries +
 			footer(linepad) +
-			persistFile[queryEnd:]
+			protofile[queryEnd:]
 
-		if err = ioutil.WriteFile(output, []byte(data), 0644); err != nil {
+		if err = ioutil.WriteFile(output.String(), []byte(data), 0644); err != nil {
 			panic(err)
 		}
 	},
@@ -236,14 +198,15 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
+	rootCmd.PersistentFlags().StringP("deli", "d", "\n\n", "the delimiter to use")
+	viper.BindPFlag("deli", rootCmd.PersistentFlags().Lookup("deli"))
+
 	rootCmd.Flags().StringP("input", "i", "persist.pete", "file to parse (default is \"persist.pete\"")
 	rootCmd.Flags().StringP("output", "o", "", "file to write to")
-	rootCmd.Flags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	rootCmd.Flags().StringP("linepad", "l", "    ", "the padding string for each line defaults to 4 spaces")
 	rootCmd.Flags().StringP("prefix", "p", "", "the package prefix for your in and out types")
 	viper.BindPFlag("input", rootCmd.Flags().Lookup("input"))
 	viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
-	viper.BindPFlag("deli", rootCmd.Flags().Lookup("deli"))
 	viper.BindPFlag("linepad", rootCmd.Flags().Lookup("linepad"))
 	viper.BindPFlag("prefix", rootCmd.Flags().Lookup("prefix"))
 }
