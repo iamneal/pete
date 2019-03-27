@@ -27,15 +27,11 @@ import (
 // readCmd represents the read command
 var readCmd = &cobra.Command{
 	Use:   "read",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Generate a pete file based on a protobuf input file",
+	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("read called")
+		fmt.Println("READ DOES NOT WORK YET")
 		workingDir, _ := os.Getwd()
 		input := path.Join(workingDir, viper.GetString("input"))
 		output := path.Join(workingDir, viper.GetString("output"))
@@ -55,14 +51,6 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(readCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// readCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	readCmd.Flags().StringP("input", "i", "", ".proto file to read queries from")
 	readCmd.Flags().StringP("output", "o", "", ".pete file to write queries to")
 	readCmd.Flags().StringSliceP("names", "n", nil, "names of the queries to read")

@@ -32,22 +32,27 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pete",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "A cli tool for persist query option generation/maintenance",
+	Long:  `This is a cli tool that will enable you to generate the options for protoc-gen-persist queries`,
 	Run: func(cmd *cobra.Command, args []string) {
-		input, err := absp.ExpandFrom(viper.GetString("input"))
+		viperInput := viper.GetString("input")
+		if viperInput == "" {
+			panic(fmt.Sprintf("No input path specified!"))
+		}
+		input, err := absp.ExpandFrom(viperInput)
 		if err != nil {
 			panic(fmt.Sprintf("error expanding input: %+v", err))
 		}
-		output, err := absp.ExpandFrom(viper.GetString("output"))
+
+		viperOutput := viper.GetString("output")
+		if viperOutput == "" {
+			panic(fmt.Sprintf("No output path specified!"))
+		}
+		output, err := absp.ExpandFrom(viperOutput)
 		if err != nil {
 			panic(fmt.Sprintf("error expanding output: %+v", err))
 		}
+
 		deli := strings.Replace(viper.GetString("deli"), "\\n", "\n", -1)
 		linepad := viper.GetString("linepad")
 		prefix := viper.GetString("prefix")
@@ -62,11 +67,13 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			panic(err)
 		}
+
 		// get unformatted queries from pete file
 		queries, err := peteQueriesFromFile(input.String(), deli)
 		if err != nil {
 			panic(err)
 		}
+
 		// now format our queries
 		decoratePeteQueries(queries, linepad, prefix, tabsize)
 
@@ -161,9 +168,11 @@ func (q *querySerializer) Serialize(tabsize string) string {
 
 	return decoratedQuery
 }
+
 func header(padding string) string {
 	return padding + "queries: [\n"
 }
+
 func footer(padding string) string {
 	return padding + "];\n"
 }
@@ -191,19 +200,14 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.pete.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (if no file is provided, uses $HOME/.pete)")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.PersistentFlags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	viper.BindPFlag("deli", rootCmd.PersistentFlags().Lookup("deli"))
 
-	rootCmd.Flags().StringP("input", "i", "persist.pete", "file to parse (default is \"persist.pete\"")
+	rootCmd.Flags().StringP("input", "i", "persist.pete", "file to parse")
 	rootCmd.Flags().StringP("output", "o", "", "file to write to")
-	rootCmd.Flags().StringP("linepad", "l", "    ", "the padding string for each line defaults to 4 spaces")
+	rootCmd.Flags().StringP("linepad", "l", "    ", "the padding string for each line")
 	rootCmd.Flags().StringP("prefix", "p", "", "the package prefix for your in and out types")
 	viper.BindPFlag("input", rootCmd.Flags().Lookup("input"))
 	viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
