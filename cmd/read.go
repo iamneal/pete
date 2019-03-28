@@ -16,13 +16,15 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path"
+	"io/ioutil"
 	"strings"
 
+	absp "github.com/rhysd/abspath"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var snake *viper.Viper
 
 // readCmd represents the read command
 var readCmd = &cobra.Command{
@@ -36,18 +38,81 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("read called")
-		workingDir, _ := os.Getwd()
-		input := path.Join(workingDir, viper.GetString("input"))
-		output := path.Join(workingDir, viper.GetString("output"))
-		deli := strings.Replace(viper.GetString("deli"), "\\n", "\n", -1)
-		all := viper.GetBool("all")
-		if !all {
+		input, err := absp.ExpandFrom(snake.GetString("input"))
+		if err != nil {
+			panic(fmt.Sprintf("error expanding input: %+v", err))
 		}
-		names := viper.GetStringSlice("names")
-		_ = input
-		_ = output
-		_ = deli
-		_ = names
+		output, err := absp.ExpandFrom(snake.GetString("output"))
+		if err != nil {
+			panic(fmt.Sprintf("error expanding output: %+v, %+v", err, snake.GetString("output")))
+		}
+		deli := strings.Replace(snake.GetString("deli"), "\\n", "\n", -1)
+		names := snake.GetStringSlice("names")
+		// prefix to cut
+		// TODO: make []string?
+		prefix := snake.GetString("prefix")
+		all := snake.GetBool("all")
+
+		fmt.Println("input: ", input)
+		fmt.Println("output: ", output)
+		fmt.Println("deli: ", deli)
+		fmt.Println("prefix: ", prefix)
+		fmt.Println("all: ", all)
+
+		rawProtoQueries, err := protoQueriesFromFile(input.String())
+		if err != nil {
+			panic(err)
+		}
+		rawPeteQueries, err := peteQueriesFromFile(output.String(), deli)
+		if err != nil {
+			panic(err)
+		}
+		peteQueries := make([]*querySerializer, len(rawPeteQueries))
+		for i, v := range rawPeteQueries {
+			peteQueries[i] = newQuerySerializerFromPete(v, "", prefix)
+		}
+		protoQueries := make([]*querySerializer, len(rawProtoQueries))
+		for i, v := range rawProtoQueries {
+			protoQueries[i] = newQuerySerializerFromProto(v, "", prefix)
+		}
+		// if our names are equal, or prefix + n == our name, or all is true
+		// we want this query to replace pete's
+		keepQuery := func(name string) bool {
+			for _, n := range names {
+				if n == strings.TrimPrefix(name, prefix) || n == name || all {
+					return true
+				}
+			}
+			return false
+		}
+		// replaces peteQuery with same name, or appends it
+		replaceOrAppend := func(protoQ *querySerializer) {
+			for i, peteQ := range peteQueries {
+				if peteQ.name == protoQ.name {
+					peteQueries[i] = protoQ
+					return
+				}
+			}
+			peteQueries = append(peteQueries, protoQ)
+		}
+
+		// loop through all the protoQueries, if they match any of our names
+		// or the all option is true, replace our pete query of the same name
+		for _, protoQ := range protoQueries {
+			if keepQuery(protoQ.name) {
+				replaceOrAppend(protoQ)
+			}
+		}
+		// write out all the peteQueries now, they should be in the right order
+		toJoinSlice := make([]string, len(peteQueries))
+		for i, v := range peteQueries {
+			toJoinSlice[i] = v.ToPete()
+		}
+
+		data := strings.Join(toJoinSlice, deli)
+		if err = ioutil.WriteFile(output.String(), []byte(data), 0644); err != nil {
+			panic(err)
+		}
 
 	},
 }
@@ -55,16 +120,20 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(readCmd)
 
-	// Here you will define your flags and configuration settings.
+	snake = newViper()
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// readCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	readCmd.Flags().StringP("input", "i", "", ".proto file to read queries from")
 	readCmd.Flags().StringP("output", "o", "", ".pete file to write queries to")
+	rootCmd.Flags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	readCmd.Flags().StringSliceP("names", "n", nil, "names of the queries to read")
 	readCmd.Flags().BoolP("all", "a", false, "read all the queries")
+
+	//prefixed because of https://github.com/spf13/viper/issues/567
+	// but prefixed didnt work either. :( neither did multiple vipers
+	snake.BindPFlag("input", readCmd.Flags().Lookup("input"))
+	snake.BindPFlag("output", readCmd.Flags().Lookup("output"))
+	snake.BindPFlag("names", readCmd.Flags().Lookup("names"))
+	snake.BindPFlag("prefix", readCmd.Flags().Lookup("prefix"))
+	snake.BindPFlag("all", readCmd.Flags().Lookup("all"))
+	snake.BindPFlag("deli", readCmd.Flags().Lookup("deli"))
 }

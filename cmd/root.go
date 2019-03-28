@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"unicode"
 
 	homedir "github.com/mitchellh/go-homedir"
 	absp "github.com/rhysd/abspath"
@@ -84,101 +83,6 @@ to quickly create a Cobra application.`,
 	},
 }
 
-type querySerializer struct {
-	padding string
-	prefix  string
-	name    string
-	inline  string
-	outline string
-	query   []string
-}
-
-func newQuerySerializer(queryParts []string, padding, prefix string) *querySerializer {
-	q := new(querySerializer)
-	// first line is always the name
-	q.name = queryParts[0]
-	queryParts = queryParts[1:]
-
-	q.padding = padding
-	q.prefix = prefix
-	// the line that contains "in: " is the input
-	// the line taht contains "out: " is the output
-	for _, v := range queryParts {
-		if strings.HasPrefix(v, "in: ") {
-			q.inline = strings.TrimPrefix(v, "in: ")
-		} else if strings.Contains(v, "out: ") {
-			q.outline = strings.TrimPrefix(v, "out: ")
-		} else {
-			q.query = append(q.query, v)
-		}
-	}
-	return q
-}
-
-/*
-	padding + { + \n
-	padding + \t + name: + " + VALUE + ", + \n
-	padding + \t + query: [ + \n + VALUE + ], + \n
-	padding + \t + " + prefix + VALUE + ", + \n
-	padding + \t + pm_strategy: + " + $ + "
-	padding + } + ,
-*/
-func (q *querySerializer) Serialize(tabsize string) string {
-	var decoratedQuery, squashed string
-	comma := func(i int) string {
-		if i == len(q.query)-1 {
-			return ""
-		}
-		return ","
-	}
-	typename := func(s string) string {
-		if strings.Contains(s, ".") || q.prefix == "" { // we must already have a full annotated path, so no adjustment
-			return s
-		}
-		return q.prefix + "." + s
-	}
-
-	queryStringTab := tabsize + tabsize
-	insideBraceTab := tabsize + tabsize + tabsize
-	for i, v := range q.query {
-		// we need to make this line pretty
-		spaces, line := trimLeftAndKeepSpaces(v)
-		squashed += q.padding + queryStringTab + spaces + fmt.Sprintf(`"%s"`, line) + comma(i) + "\n"
-	}
-
-	// TODO make }, { optional
-	decoratedQuery += q.padding + "{\n"
-	// TODO make the tab size adjustable
-	decoratedQuery += insideBraceTab + fmt.Sprintf(`name: "%s",`+"\n", q.name)
-	decoratedQuery += insideBraceTab + "query: [\n"
-	decoratedQuery += squashed
-	decoratedQuery += insideBraceTab + "],\n"
-	// TODO make this optional too
-	decoratedQuery += insideBraceTab + `pm_strategy: "$",` + "\n"
-	decoratedQuery += insideBraceTab + fmt.Sprintf(`in: "%s",`+"\n", typename(q.inline))
-	decoratedQuery += insideBraceTab + fmt.Sprintf(`out: "%s",`+"\n", typename(q.outline))
-	decoratedQuery += q.padding + "}"
-
-	return decoratedQuery
-}
-func header(padding string) string {
-	return padding + "queries: [\n"
-}
-func footer(padding string) string {
-	return padding + "];\n"
-}
-
-func trimLeftAndKeepSpaces(s string) (spaces string, trimmed string) {
-	trimmed = strings.TrimLeftFunc(s, func(r rune) bool {
-		if unicode.IsSpace(r) {
-			spaces += string(r)
-			return true
-		}
-		return false
-	})
-	return
-}
-
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -189,7 +93,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	// cobra.OnInitialize(newViper)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -212,11 +116,12 @@ func init() {
 }
 
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {
+func newViper() *viper.Viper {
+	snake := viper.New()
 	if cfgFile != "" {
 		fmt.Println("parsing config flag: ", cfgFile)
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
+		snake.SetConfigFile(cfgFile)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -226,14 +131,15 @@ func initConfig() {
 		}
 
 		// Search config in home directory with name ".pete" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".pete")
+		snake.AddConfigPath(home)
+		snake.SetConfigName(".pete")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	snake.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := snake.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", snake.ConfigFileUsed())
 	}
+	return snake
 }
