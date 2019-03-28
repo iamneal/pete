@@ -108,11 +108,11 @@ func init() {
 	rootCmd.Flags().StringP("input", "i", "persist.pete", "file to parse (default is \"persist.pete\"")
 	rootCmd.Flags().StringP("output", "o", "", "file to write to")
 	rootCmd.Flags().StringP("linepad", "l", "    ", "the padding string for each line defaults to 4 spaces")
-	rootCmd.Flags().StringP("prefix", "p", "", "the package prefix for your in and out types")
+	rootCmd.PersistentFlags().StringP("prefix", "p", "", "the package prefix for your in and out types")
 	viper.BindPFlag("input", rootCmd.Flags().Lookup("input"))
 	viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
 	viper.BindPFlag("linepad", rootCmd.Flags().Lookup("linepad"))
-	viper.BindPFlag("prefix", rootCmd.Flags().Lookup("prefix"))
+	viper.BindPFlag("prefix", rootCmd.PersistentFlags().Lookup("prefix"))
 }
 
 // initConfig reads in config file and ENV variables if set.

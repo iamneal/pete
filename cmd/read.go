@@ -24,8 +24,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var snake *viper.Viper
-
 // readCmd represents the read command
 var readCmd = &cobra.Command{
 	Use:   "read",
@@ -38,20 +36,20 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("read called")
-		input, err := absp.ExpandFrom(snake.GetString("input"))
+		input, err := absp.ExpandFrom(viper.GetString("read-input"))
 		if err != nil {
 			panic(fmt.Sprintf("error expanding input: %+v", err))
 		}
-		output, err := absp.ExpandFrom(snake.GetString("output"))
+		output, err := absp.ExpandFrom(viper.GetString("read-output"))
 		if err != nil {
-			panic(fmt.Sprintf("error expanding output: %+v, %+v", err, snake.GetString("output")))
+			panic(fmt.Sprintf("error expanding output: %+v, %+v", err, viper.GetString("read-output")))
 		}
-		deli := strings.Replace(snake.GetString("deli"), "\\n", "\n", -1)
-		names := snake.GetStringSlice("names")
+		deli := strings.Replace(viper.GetString("deli"), "\\n", "\n", -1)
+		names := viper.GetStringSlice("read-names")
 		// prefix to cut
 		// TODO: make []string?
-		prefix := snake.GetString("prefix")
-		all := snake.GetBool("all")
+		prefix := viper.GetString("prefix")
+		all := viper.GetBool("read-all")
 
 		fmt.Println("input: ", input)
 		fmt.Println("output: ", output)
@@ -120,20 +118,17 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(readCmd)
 
-	snake = newViper()
-
 	readCmd.Flags().StringP("input", "i", "", ".proto file to read queries from")
 	readCmd.Flags().StringP("output", "o", "", ".pete file to write queries to")
-	rootCmd.Flags().StringP("deli", "d", "\n\n", "the delimiter to use")
+	//rootCmd.Flags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	readCmd.Flags().StringSliceP("names", "n", nil, "names of the queries to read")
 	readCmd.Flags().BoolP("all", "a", false, "read all the queries")
 
-	//prefixed because of https://github.com/spf13/viper/issues/567
-	// but prefixed didnt work either. :( neither did multiple vipers
-	snake.BindPFlag("input", readCmd.Flags().Lookup("input"))
-	snake.BindPFlag("output", readCmd.Flags().Lookup("output"))
-	snake.BindPFlag("names", readCmd.Flags().Lookup("names"))
-	snake.BindPFlag("prefix", readCmd.Flags().Lookup("prefix"))
-	snake.BindPFlag("all", readCmd.Flags().Lookup("all"))
-	snake.BindPFlag("deli", readCmd.Flags().Lookup("deli"))
+	// prefixed because of https://github.com/spf13/viper/issues/567
+	viper.BindPFlag("read-input", readCmd.Flags().Lookup("input"))
+	viper.BindPFlag("read-output", readCmd.Flags().Lookup("output"))
+	viper.BindPFlag("read-names", readCmd.Flags().Lookup("names"))
+	viper.BindPFlag("read-prefix", readCmd.Flags().Lookup("prefix"))
+	viper.BindPFlag("read-all", readCmd.Flags().Lookup("all"))
+	//viper.BindPFlag("deli", rootCmd.PersistentFlags().Lookup("deli"))
 }
