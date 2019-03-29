@@ -192,11 +192,6 @@ func init() {
 	rootCmd.AddCommand(writeCmd)
 
 	/* Flags
-	 * Local Flags
-	 * input   - input pete file
-	 * output  - output proto file
-
-	 * Persistent Flags
 	 * deli    - the delimeter to seperate pete queries
 	 * linepad - the padding to be used in the proto file
 	 * prefix  - the package prefix for in and out types
