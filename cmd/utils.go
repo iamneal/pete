@@ -10,14 +10,14 @@ import (
 func protoFileQueriesPos(protoPath string) (file string, start, stop int, err error) {
 	fbytes, err := ioutil.ReadFile(protoPath)
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("error reading file '%s': \n%+v", protoPath, err)
+		return "", 0, 0, err
 	}
 
 	file = string(fbytes)
 
 	lineWithPersist := strings.Index(file, "persist.ql")
 	if lineWithPersist < 0 {
-		return "", 0, 0, fmt.Errorf("not a persist file")
+		return "", 0, 0, fmt.Errorf("Error: output is not a persist file")
 	}
 	// find next nearest newline, that is where we will start our search
 	nextNl := strings.Index(file[lineWithPersist:], "\n")

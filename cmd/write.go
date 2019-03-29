@@ -27,28 +27,27 @@ import (
 
 // writeCmd will provide all the functionality needed to write to proto queries
 var writeCmd = &cobra.Command{
-	Use:   "write",
+	Use:   "write <input> <output>",
 	Short: "Used to write to the persist query options",
-	Long: `Will read from an input pete file and write
-the formatted output to the proto queries option`,
+	Long: `The write command will read from an input pete
+file and write the formatted output to the proto queries option`,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		viperInput := viper.GetString("write-input")
-		if viperInput == "" {
-			panic(fmt.Sprintf("No input path specified!"))
-		}
-		input, err := absp.ExpandFrom(viperInput)
-		if err != nil {
-			panic(fmt.Sprintf("error expanding input: %+v", err))
+		if len(args) < 2 {
+			cmd.Usage()
+			return
 		}
 
-		viperOutput := viper.GetString("write-output")
-		if viperOutput == "" {
-			panic(fmt.Sprintf("No output path specified!"))
-		}
-		output, err := absp.ExpandFrom(viperOutput)
+		input, err := absp.ExpandFrom(args[0])
 		if err != nil {
-			panic(fmt.Sprintf("error expanding output: %+v", err))
+			fmt.Printf("error expanding input: %+v", err)
+			return
+		}
+
+		output, err := absp.ExpandFrom(args[1])
+		if err != nil {
+			fmt.Printf("error expanding output: %+v", err)
+			return
 		}
 
 		deli := strings.Replace(viper.GetString("write-deli"), "\\n", "\n", -1)
@@ -59,17 +58,19 @@ the formatted output to the proto queries option`,
 		fmt.Println("input: ", input)
 		fmt.Println("output: ", output)
 		fmt.Println("deli: ", deli)
-		fmt.Println("prefix: ", prefix)
+		fmt.Print("prefix: ", prefix, "\n\n")
 
 		protofile, queryStart, queryEnd, err := protoFileQueriesPos(output.String())
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 
 		// get unformatted queries from pete file
 		queries, err := peteQueriesFromFile(input.String(), deli)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 
 		// now format our queries
@@ -84,7 +85,8 @@ the formatted output to the proto queries option`,
 			protofile[queryEnd:]
 
 		if err = ioutil.WriteFile(output.String(), []byte(data), 0644); err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 	},
 }
@@ -199,9 +201,4 @@ func init() {
 	 * linepad - the padding to be used in the proto file
 	 * prefix  - the package prefix for in and out types
 	 */
-
-	writeCmd.Flags().StringP("input", "i", "persist.pete", "file to parse")
-	writeCmd.Flags().StringP("output", "o", "", "file to write to")
-	viper.BindPFlag("write-input", writeCmd.Flags().Lookup("input"))
-	viper.BindPFlag("write-output", writeCmd.Flags().Lookup("output"))
 }
