@@ -263,7 +263,7 @@ func (q *querySerializer) ToProto(tabsize string) string {
 func (q *querySerializer) ToPete() string {
 	query := strings.Join(q.query, "\n")
 
-	return strings.Join([]string{q.name, q.inline, q.outline, query}, "\n")
+	return strings.Join([]string{q.name, "in: " + q.inline, "out: " + q.outline, query}, "\n")
 }
 
 func (q *querySerializer) Undecorate() (name, in, out string, query []string) {
