@@ -178,5 +178,9 @@ no more comma hunting, no more syntax errors, no more having to write more than 
 `go install github.com/iamneal/pete`
 
 ## Roadmap
-- read from a proto file into a .pete file so I can change all the other services to this format not by hand.
-- be able to snip in/out single queries by name.
+- ~read from a proto file into a .pete file so I can change all the other services to this format not by hand.~
+- ~be able to snip in/out single queries by name.~
+
+## Contributers
+- @iamneal89
+- @Xanuthatusu

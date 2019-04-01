@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -45,11 +47,16 @@ func protoFileQueriesPos(protoPath string) (file string, start, stop int, err er
 	return
 }
 
-//
 func peteQueriesFromFile(petePath, delimiter string) ([]string, error) {
 	inbytes, err := ioutil.ReadFile(petePath)
-	if err != nil {
-		return nil, fmt.Errorf("error reading input file '%s': \n%+v", petePath, err)
+	if os.IsNotExist(err) {
+		if _, err := os.Create(petePath); err != nil {
+			return nil, err
+		}
+		inbytes, err = ioutil.ReadFile(petePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return strings.Split(string(inbytes), delimiter), nil
 }
@@ -73,15 +80,33 @@ func decoratePeteQueries(queries []string, linepad, prefix, tabsize string) {
 
 // it has a bunch of garbage characters around it, but it
 // contains 0 or 1 set of query options in its contents, but not more
+/* an example of one is this string
+   queries: [
+    {
+      name: "GetCatByName",
+      query: [
+        "SELECT",
+            "name,",
+            "age,",
+            "cost",
+        "FROM cats",
+        "WHERE",
+            "name = @cat_name"
+      ],
+      pm_strategy: "$",
+      in: ".test.CatName",
+      out: ".test.Cat",
+
+*/
 type grossQuery string
 
 func protoQueriesFromFile(protoPath string) ([]grossQuery, error) {
-	pbytes, err := ioutil.ReadFile(protoPath)
+	file, start, end, err := protoFileQueriesPos(protoPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file '%s': \n+%v", protoPath, err)
 	}
-
-	strs := strings.Split(string(pbytes), "},")
+	queriesString := file[start:end]
+	strs := strings.Split(queriesString, "},")
 	out := make([]grossQuery, len(strs))
 
 	for i, v := range strs {
@@ -101,7 +126,7 @@ type querySerializer struct {
 }
 
 func newQuerySerializerFromPete(query string, padding, prefix string) *querySerializer {
-	queryParts := strings.Split(query, "\n")
+	queryParts := strings.Split(strings.TrimSpace(query), "\n")
 	q := new(querySerializer)
 	// first line is always the name
 	q.name = queryParts[0]
@@ -123,14 +148,68 @@ func newQuerySerializerFromPete(query string, padding, prefix string) *querySeri
 	return q
 }
 
+// performs the regular expression, an pulls out any named capture groups
+func namedCapture(regXp, matchStr string) (map[string]string, *regexp.Regexp) {
+	ret := make(map[string]string)
+
+	compiledExp := regexp.MustCompile(regXp)
+	matches := compiledExp.FindStringSubmatch(matchStr)
+	for i, name := range compiledExp.SubexpNames() {
+		// first item in matches needs to be ignored
+		if i == 0 || i >= len(matches) || name == "" {
+			continue
+		}
+		ret[name] = matches[i]
+	}
+	return ret, compiledExp
+}
+
 // TODO
 func newQuerySerializerFromProto(query grossQuery, padding, prefix string) *querySerializer {
+	queryStr := string(query)
+
+	name, _ := namedCapture("name:( *)\"(?P<name>[a-zA-Z0-9]+)\"", queryStr)
+	queryCapture, _ := namedCapture(`(?s)query:\s*\[(?P<query>[^\[\]]*)\]`, queryStr)
+	inOutCapture, _ := namedCapture(`(?s)in:\s*"(?P<in>.*)",.*out:\s*"(?P<out>.*)"`, queryStr)
+
 	q := new(querySerializer)
 	q.padding = padding
 	q.prefix = prefix
-	fmt.Printf("my query: \n%+v\n\n", query)
+	q.name = name["name"]
+	// TODO this is stupid.  Refactor pete to not include "in: " and "out: " and write it on serialization
+	q.inline = "in: " + inOutCapture["in"]
+	q.outline = "out: " + inOutCapture["out"]
+	lineReg := regexp.MustCompile(`(?P<whitespace>\s*)"(?P<line>.+)"`)
+	names := lineReg.SubexpNames()
+	_ = names
+	shortest := 999999999999
+	lines := strings.Split(queryCapture["query"], "\n")
 
-	return nil
+	// first pass get the shortest whitespace so we know how much to indent
+	for _, line := range lines {
+		subs := lineReg.FindStringSubmatch(line)
+		if len(subs) < 2 {
+			// probably an empty line or something
+			continue
+			// panic(fmt.Sprintf("query: %v\nline: %v\nsubs: %+v", queryCapture["query"], line, subs))
+		}
+		whitespace := len(subs[1])
+		if shortest > whitespace {
+			shortest = whitespace
+		}
+	}
+
+	for _, line := range lines {
+		subs := lineReg.FindStringSubmatch(line)
+		if len(subs) < 2 {
+			// probably an empty line or something
+			continue
+		}
+		whitespace := len(subs[1]) - shortest
+		currentLine := subs[2]
+		q.query = append(q.query, makeSpaces(whitespace)+currentLine)
+	}
+	return q
 }
 
 /*
@@ -182,7 +261,9 @@ func (q *querySerializer) ToProto(tabsize string) string {
 }
 
 func (q *querySerializer) ToPete() string {
-	return ""
+	query := strings.Join(q.query, "\n")
+
+	return strings.Join([]string{q.name, q.inline, q.outline, query}, "\n")
 }
 
 func (q *querySerializer) Undecorate() (name, in, out string, query []string) {
@@ -205,4 +286,12 @@ func trimLeftAndKeepSpaces(s string) (spaces string, trimmed string) {
 		return false
 	})
 	return
+}
+
+func makeSpaces(n int) string {
+	arr := make([]string, n)
+	for i := range arr {
+		arr[i] = " "
+	}
+	return strings.Join(arr, "")
 }

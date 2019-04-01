@@ -35,7 +35,6 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("read called")
 		input, err := absp.ExpandFrom(viper.GetString("read-input"))
 		if err != nil {
 			panic(fmt.Sprintf("error expanding input: %+v", err))
@@ -65,19 +64,22 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			panic(err)
 		}
-		peteQueries := make([]*querySerializer, len(rawPeteQueries))
-		for i, v := range rawPeteQueries {
-			peteQueries[i] = newQuerySerializerFromPete(v, "", prefix)
+		peteQueries := make([]*querySerializer, 0)
+		for _, v := range rawPeteQueries {
+			peteQueries = append(peteQueries, newQuerySerializerFromPete(v, "", prefix))
 		}
-		protoQueries := make([]*querySerializer, len(rawProtoQueries))
-		for i, v := range rawProtoQueries {
-			protoQueries[i] = newQuerySerializerFromProto(v, "", prefix)
+		protoQueries := make([]*querySerializer, 0)
+		for _, v := range rawProtoQueries {
+			protoQueries = append(protoQueries, newQuerySerializerFromProto(v, "", prefix))
 		}
-		// if our names are equal, or prefix + n == our name, or all is true
+		// if our names are equal, or all is true
 		// we want this query to replace pete's
 		keepQuery := func(name string) bool {
+			if all {
+				return true
+			}
 			for _, n := range names {
-				if n == strings.TrimPrefix(name, prefix) || n == name || all {
+				if n == strings.TrimSpace(name) || n == name {
 					return true
 				}
 			}
@@ -86,6 +88,7 @@ to quickly create a Cobra application.`,
 		// replaces peteQuery with same name, or appends it
 		replaceOrAppend := func(protoQ *querySerializer) {
 			for i, peteQ := range peteQueries {
+				fmt.Printf("names equal?\npete:  %v\nproto: %v\n", peteQ.name, protoQ.name)
 				if peteQ.name == protoQ.name {
 					peteQueries[i] = protoQ
 					return
@@ -106,8 +109,8 @@ to quickly create a Cobra application.`,
 		for i, v := range peteQueries {
 			toJoinSlice[i] = v.ToPete()
 		}
-
 		data := strings.Join(toJoinSlice, deli)
+		data = strings.TrimSpace(data)
 		if err = ioutil.WriteFile(output.String(), []byte(data), 0644); err != nil {
 			panic(err)
 		}
