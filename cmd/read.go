@@ -27,13 +27,8 @@ import (
 // readCmd represents the read command
 var readCmd = &cobra.Command{
 	Use:   "read",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Generate a pete file based on a protobuf input file",
+	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		input, err := absp.ExpandFrom(viper.GetString("read-input"))
 		if err != nil {

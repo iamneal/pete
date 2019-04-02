@@ -13,7 +13,7 @@ message AnimalCount{
     int64 fishes = 1;
 }
 
-message  Dog {
+message Dog {
     string name = 1;
     double age = 2;
     double cost = 3;
@@ -29,10 +29,10 @@ message Fish {
 }
 message Owner {
     string name = 1;
-    repeated Dog dogs = 1;
     repeated Cat cats = 2;
     repeated Fish fishes = 3;
-    double money = 4;
+    repeated Dog dogs = 4;
+    double money = 5;
 }
 
 message CatName {
