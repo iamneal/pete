@@ -118,7 +118,6 @@ func init() {
 
 	readCmd.Flags().StringP("input", "i", "", ".proto file to read queries from")
 	readCmd.Flags().StringP("output", "o", "", ".pete file to write queries to")
-	//rootCmd.Flags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	readCmd.Flags().StringSliceP("names", "n", nil, "names of the queries to read")
 	readCmd.Flags().BoolP("all", "a", false, "read all the queries")
 
@@ -128,5 +127,4 @@ func init() {
 	viper.BindPFlag("read-names", readCmd.Flags().Lookup("names"))
 	viper.BindPFlag("read-prefix", readCmd.Flags().Lookup("prefix"))
 	viper.BindPFlag("read-all", readCmd.Flags().Lookup("all"))
-	//viper.BindPFlag("deli", rootCmd.PersistentFlags().Lookup("deli"))
 }

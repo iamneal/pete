@@ -1,16 +1,3 @@
-InsertFish
-
-
-.test.Fish
-.test.Empty
-INSERT INTO fish(
-    species,
-    cost
-) VALUES(
-    @species,
-    @cost
-)
-
 GetCatByName
 in: .test.CatName
 out: .test.Cat
@@ -21,3 +8,14 @@ SELECT
 FROM cats
 WHERE
     name = @cat_name
+
+InsertFish
+in: .test.Fish
+out: .test.Empty
+INSERT INTO fish(
+    species,
+    cost
+) VALUES(
+    @species,
+    @cost
+)

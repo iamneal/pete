@@ -13,14 +13,14 @@ import (
 func protoFileQueriesPos(protoPath string) (file string, start, stop int, err error) {
 	fbytes, err := ioutil.ReadFile(protoPath)
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("error reading file '%s': \n%+v", protoPath, err)
+		return "", 0, 0, err
 	}
 
 	file = string(fbytes)
 
 	lineWithPersist := strings.Index(file, "persist.ql")
 	if lineWithPersist < 0 {
-		return "", 0, 0, fmt.Errorf("not a persist file")
+		return "", 0, 0, fmt.Errorf("Error: output is not a persist file")
 	}
 	// find next nearest newline, that is where we will start our search
 	nextNl := strings.Index(file[lineWithPersist:], "\n")
@@ -148,23 +148,6 @@ func newQuerySerializerFromPete(query string, padding, prefix string) *querySeri
 	return q
 }
 
-// performs the regular expression, an pulls out any named capture groups
-func namedCapture(regXp, matchStr string) (map[string]string, *regexp.Regexp) {
-	ret := make(map[string]string)
-
-	compiledExp := regexp.MustCompile(regXp)
-	matches := compiledExp.FindStringSubmatch(matchStr)
-	for i, name := range compiledExp.SubexpNames() {
-		// first item in matches needs to be ignored
-		if i == 0 || i >= len(matches) || name == "" {
-			continue
-		}
-		ret[name] = matches[i]
-	}
-	return ret, compiledExp
-}
-
-// TODO
 func newQuerySerializerFromProto(query grossQuery, padding, prefix string) *querySerializer {
 	queryStr := string(query)
 
@@ -263,7 +246,7 @@ func (q *querySerializer) ToProto(tabsize string) string {
 func (q *querySerializer) ToPete() string {
 	query := strings.Join(q.query, "\n")
 
-	return strings.Join([]string{q.name, "in: " + q.inline, "out: " + q.outline, query}, "\n")
+	return strings.Join([]string{q.name, q.inline, q.outline, query}, "\n")
 }
 
 func (q *querySerializer) Undecorate() (name, in, out string, query []string) {
@@ -294,4 +277,20 @@ func makeSpaces(n int) string {
 		arr[i] = " "
 	}
 	return strings.Join(arr, "")
+}
+
+// performs the regular expression, an pulls out any named capture groups
+func namedCapture(regXp, matchStr string) (map[string]string, *regexp.Regexp) {
+	ret := make(map[string]string)
+
+	compiledExp := regexp.MustCompile(regXp)
+	matches := compiledExp.FindStringSubmatch(matchStr)
+	for i, name := range compiledExp.SubexpNames() {
+		// first item in matches needs to be ignored
+		if i == 0 || i >= len(matches) || name == "" {
+			continue
+		}
+		ret[name] = matches[i]
+	}
+	return ret, compiledExp
 }

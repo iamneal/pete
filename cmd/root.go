@@ -16,12 +16,9 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
-	absp "github.com/rhysd/abspath"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,60 +30,9 @@ var rootCmd = &cobra.Command{
 	Use:   "pete",
 	Short: "A cli tool for persist query option generation/maintenance",
 	Long:  `This is a cli tool that will enable you to generate the options for protoc-gen-persist queries`,
+
 	Run: func(cmd *cobra.Command, args []string) {
-		viperInput := viper.GetString("input")
-		if viperInput == "" {
-			panic(fmt.Sprintf("No input path specified!"))
-		}
-		input, err := absp.ExpandFrom(viperInput)
-		if err != nil {
-			panic(fmt.Sprintf("error expanding input: %+v", err))
-		}
-
-		viperOutput := viper.GetString("output")
-		if viperOutput == "" {
-			panic(fmt.Sprintf("No output path specified!"))
-		}
-		output, err := absp.ExpandFrom(viperOutput)
-		if err != nil {
-			panic(fmt.Sprintf("error expanding output: %+v", err))
-		}
-
-		deli := strings.Replace(viper.GetString("deli"), "\\n", "\n", -1)
-		linepad := viper.GetString("linepad")
-		prefix := viper.GetString("prefix")
-		tabsize := "  "
-
-		fmt.Println("input: ", input)
-		fmt.Println("output: ", output)
-		fmt.Println("deli: ", deli)
-		fmt.Println("prefix: ", prefix)
-
-		protofile, queryStart, queryEnd, err := protoFileQueriesPos(output.String())
-		if err != nil {
-			panic(err)
-		}
-
-		// get unformatted queries from pete file
-		queries, err := peteQueriesFromFile(input.String(), deli)
-		if err != nil {
-			panic(err)
-		}
-
-		// now format our queries
-		decoratePeteQueries(queries, linepad, prefix, tabsize)
-
-		joinedQueries := strings.Join(queries, "")
-
-		data := protofile[0:queryStart] +
-			header(linepad) +
-			joinedQueries +
-			footer(linepad) +
-			protofile[queryEnd:]
-
-		if err = ioutil.WriteFile(output.String(), []byte(data), 0644); err != nil {
-			panic(err)
-		}
+		cmd.Help()
 	},
 }
 
@@ -102,19 +48,23 @@ func Execute() {
 func init() {
 	// cobra.OnInitialize(newViper)
 
+	// Load the config file flag directly into the cfgFile var
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (if no file is provided, uses $HOME/.pete)")
+
+	/* Flags
+	 * Any flags defined in the root command will be
+	 * shared across both the read and the write commands
+	 *
+	 * deli    - the delimeter to seperate pete queries
+	 * linepad - the padding to be used in the proto file
+	 * prefix  - the package prefix for in and out types
+	 */
 
 	rootCmd.PersistentFlags().StringP("deli", "d", "\n\n", "the delimiter to use")
 	viper.BindPFlag("deli", rootCmd.PersistentFlags().Lookup("deli"))
 
-	rootCmd.Flags().StringP("input", "i", "persist.pete", "file to parse")
-	rootCmd.Flags().StringP("output", "o", "", "file to write to")
-	rootCmd.Flags().StringP("linepad", "l", "    ", "the padding string for each line")
-	rootCmd.Flags().StringP("prefix", "p", "", "the package prefix for your in and out types")
-	viper.BindPFlag("input", rootCmd.Flags().Lookup("input"))
-	viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
-	viper.BindPFlag("linepad", rootCmd.Flags().Lookup("linepad"))
-	viper.BindPFlag("prefix", rootCmd.PersistentFlags().Lookup("prefix"))
+	rootCmd.PersistentFlags().StringP("linepad", "l", "    ", "the padding string for each line")
+	rootCmd.PersistentFlags().StringP("prefix", "p", "", "the package prefix for your in and out types")
 }
 
 // initConfig reads in config file and ENV variables if set.
